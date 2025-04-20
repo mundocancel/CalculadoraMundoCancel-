@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MundoCancel - Calculadora línea de 3"</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f5f7fa;
+        }
+        
+        .sidebar {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .sidebar.active {
+            transform: translateX(0);
+        }
+        
+        .backdrop {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .backdrop.active {
+            display: block;
+            opacity: 0.5;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+        }
+        
+        .result-item {
+            transition: all 0.2s ease;
+        }
+        
+        .result-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .drawing-container {
+            min-height: 300px;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+        }
+        
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Mobile Sidebar Overlay -->
+    <div class="backdrop fixed inset-0 bg-black z-40"></div>
+    
+    <!-- Sidebar -->
+    <div class="sidebar fixed inset-y-0 left-0 w-64 bg-white shadow-lg z-50 p-4 overflow-y-auto">
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-window-maximize text-blue-600 text-xl"></i>
+                <h2 class="text-xl font-bold text-gray-800">MundoCancel</h2>
+            </div>
+            <button id="close-sidebar" class="md:hidden text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="mb-6">
+            <h3 class="text-sm uppercase font-semibold text-gray-500 tracking-wider mb-2">Configuración</h3>
+            <ul class="space-y-1">
+                <li>
+                    <a href="#" id="edit-prices-btn" class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition">
+                        <i class="fas fa-dollar-sign mr-3"></i> Editar precios
+                    </a>
+                </li>
+                <li>
+                    <a href="#" id="saved-calculations-btn" class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition">
+                        <i class="fas fa-history mr-3"></i> Historial
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+        <div>
+            <h3 class="text-sm uppercase font-semibold text-gray-500 tracking-wider mb-2">Tipos de ventanas</h3>
+            <ul class="space-y-1">
+                <li>
+                    <a href="#" data-type="telescopica" class="window-type block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition">
+                        <i class="fas fa-vector-square mr-3"></i> Telescópica
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-type="oxxo" class="window-type block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition">
+                        <i class="fas fa-border-none mr-3"></i> OXXO
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-type="corrediza" class="window-type block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition">
+                        <i class="fas fa-window-restore mr-3"></i> Corrediza
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="flex flex-col min-h-screen">
+        <!-- Header -->
+        <header class="gradient-bg text-white shadow-md">
+            <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <button id="menu-toggle" class="md:hidden text-white">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-window-maximize text-white text-2xl"></i>
+                        <h1 class="text-xl font-bold">MundoCancel</h1>
+                    </div>
+                    <span class="hidden md:block text-sm px-3 py-1 bg-white bg-opacity-20 rounded-full">Calculadora línea de 3"</span>
+                </div>
+                <button id="help-btn" class="p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition">
+                    <i class="fas fa-question"></i>
+                </button>
+            </div>
+        </header>
+        
+        <!-- Content -->
+        <main class="flex-grow container mx-auto px-4 py-6">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Calculadora de ventanas</h2>
+                    
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <!-- Window Type Card -->
+                        <div id="window-type-card" class="border border-gray-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-lg text-gray-700 mb-3 flex items-center">
+                                <i class="fas fa-vector-square mr-2 text-blue-500"></i>
+                                Tipo de ventana
+                            </h3>
+                            <div class="flex flex-wrap gap-3">
+                                <button data-type="telescopica" class="window-type-btn flex-1 btn-type-default py-2 px-4 rounded-md border border-gray-300 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 text-gray-700 hover:text-blue-700 transition">
+                                    Telescópica
+                                </button>
+                                <button data-type="oxxo" class="window-type-btn flex-1 btn-type-default py-2 px-4 rounded-md border border-gray-300 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 text-gray-700 hover:text-blue-700 transition">
+                                    OXXO
+                                </button>
+                                <button data-type="corrediza" class="window-type-btn flex-1 btn-type-default py-2 px-4 rounded-md border border-gray-300 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 text-gray-700 hover:text-blue-700 transition">
+                                    Corrediza
+                                </button>
+                            </div>
+                            <div id="selected-type-display" class="mt-4 hidden">
+                                <div class="flex items-center bg-blue-50 rounded-md p-3 border border-blue-100">
+                                    <i class="fas fa-check-circle text-blue-500 mr-3 text-xl"></i>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Seleccionado:</p>
+                                        <p id="selected-type" class="font-medium text-blue-700"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Measurements Card -->
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-lg text-gray-700 mb-3 flex items-center">
+                                <i class="fas fa-ruler-combined mr-2 text-blue-500"></i>
+                                Medidas del área (mm)
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="width" class="block text-sm font-medium text-gray-700 mb-1">Ancho total</label>
+                                    <input type="number" id="width" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Ancho en milímetros">
+                                </div>
+                                <div>
+                                    <label for="height" class="block text-sm font-medium text-gray-700 mb-1">Alto total</label>
+                                    <input type="number" id="height" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Alto en milímetros">
+                                </div>
+                                <div class="pt-2">
+                                    <button id="calculate-btn" class="w-full gradient-bg text-white py-2 px-4 rounded-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition disabled:opacity-50" disabled>
+                                        Calcular materiales
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Results Section -->
+            <div id="results-section" class="hidden">
+                <div class="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+                    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                        <h2 class="text-xl font-bold text-gray-800">Resultados del cálculo</h2>
+                        <div class="flex space-x-2 no-print">
+                            <button id="save-btn" class="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition">
+                                <i class="fas fa-save mr-2"></i> Guardar
+                            </button>
+                            <button id="pdf-btn" class="flex items-center px-4 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition">
+                                <i class="fas fa-file-pdf mr-2"></i> Exportar PDF
+                            </button>
+                            <button id="print-btn" class="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition">
+                                <i class="fas fa-print mr-2"></i> Imprimir
+                            </button>
+                            <button id="share-btn" class="flex items-center px-4 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition">
+
+                                <i class="fas fa-share-alt mr-2"></i> Compartir
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="p-6 grid md:grid-cols-3 gap-6">
+                        <!-- Project Info -->
+                        <div class="md:col-span-1">
+                            <div class="bg-blue-50 rounded-lg p-4 mb-4">
+                                <h3 class="font-semibold text-gray-800 mb-2">Detalles del proyecto</h3>
+                                <div class="space-y-2">
+                                    <p><span class="text-gray-600">Tipo:</span> <span id="result-type" class="font-medium"></span></p>
+                                    <p><span class="text-gray-600">Ancho:</span> <span id="result-width" class="font-medium"></span> mm</p>
+                                    <p><span class="text-gray-600">Alto:</span> <span id="result-height" class="font-medium"></span> mm</p>
+                                    <p class="pt-2"><span class="text-gray-600">Fecha:</span> <span id="result-date" class="font-medium"></span></p>
+                                </div>
+                            </div>
+                            
+                            <!-- Drawing Area -->
+                            <div class="drawing-container rounded-lg border border-gray-200 p-4 flex items-center justify-center">
+                                <div id="window-drawing" class="relative" style="width: 100%; height: 100%;">
+                                    <!-- Drawing will be inserted here -->
+                                    <p class="text-gray-500 text-center">Dibujo del diseño aparecerá aquí</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Materials List -->
+                        <div class="md:col-span-2">
+                            <div class="mb-4">
+                                <h3 class="font-semibold text-lg text-gray-800 mb-3">Lista de materiales necesarios</h3>
+                                <div id="materials-list" class="space-y-3">
+                                    <!-- Materials will be inserted here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Total Cost -->
+                            <div class="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="font-semibold text-gray-800">Costo total estimado</h3>
+                                    <p id="total-cost" class="text-2xl font-bold text-blue-700">$0.00</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-6">
+            <div class="container mx-auto px-4 text-center">
+                <p class="text-sm">© 2023 MundoCancel - Calculadora línea de 3". Todos los derechos reservados.</p>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- Edit Prices Modal -->
+    <div id="edit-prices-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-gray-800">Editar precios de materiales</h3>
+                <button id="close-prices-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <div id="price-inputs" class="space-y-4">
+                    <!-- Price inputs will be inserted here -->
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                <button id="cancel-prices-btn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition">
+                    Cancelar
+                </button>
+                <button id="save-prices-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
+                    Guardar cambios
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Help Modal -->
+    <div id="help-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-gray-800">Ayuda - Cómo usar la calculadora</h3>
+                <button id="close-help-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <div class="space-y-4">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-blue-800 mb-2">Instrucciones básicas</h4>
+                        <ol class="list-decimal list-inside space-y-1 text-gray-700">
+                            <li>Seleccione el tipo de ventana que desea calcular</li>
+                            <li>Ingrese las medidas del área (ancho y alto) en milímetros</li>
+                            <li>Presione el botón "Calcular materiales"</li>
+                            <li>Revise los resultados obtenidos</li>
+                            <li>Si lo desea, puede guardar, exportar, imprimir o compartir los resultados</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="bg-amber-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-amber-800 mb-2">Tipos de ventana</h4>
+                        <ul class="space-y-2 text-gray-700">
+                            <li>
+                                <span class="font-medium">Telescópica:</span> Ventana de 3 hojas que se superponen al deslizarse
+                            </li>
+                            <li>
+                                <span class="font-medium">OXXO:</span> Ventana de 4 hojas con diseños fijos y corredizos
+                            </li>
+                            <li>
+                                <span class="font-medium">Corrediza:</span> Ventana de 2 hojas (una fija y una corrediza)
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-green-800 mb-2">Fórmulas de cálculo</h4>
+                        <p class="text-gray-700 mb-2">Las fórmulas para cada componente varían según el tipo de ventana:</p>
+                        <ul class="space-y-2 text-sm text-gray-600">
+                            <li class="font-semibold text-gray-700">Telescópica:</li>
+                            <li>· Riel & Jamba superior: W</li>
+                            <li>· Jambas laterales (2): H - 26</li>
+                            <li>· Zoclos (3): (W - 167) / 3</li>
+                            <li>· Vidrio fijo: ancho (W - 117) / 3, alto H - 95</li>
+                            <li class="pt-1 font-semibold text-gray-700">OXXO:</li>
+                            <li>· Zoclos & Cabezales (4): (W - 330) / 4</li>
+                            <li>· Vidrios (4): ancho (W - 265) / 4</li>
+                            <li class="pt-1 font-semibold text-gray-700">Corrediza:</li>
+                            <li>· Zoclos & Cabezales (2): (W - 185) / 2</li>
+                            <li>· Vidrio fijo: ancho (W - 151) / 2, alto H - 125</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+                <button id="close-help-modal-2" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize variables
+            let windowType = null;
+            let windowWidth = null;
+            let windowHeight = null;
+            const { jsPDF } = window.jspdf;
+            
+            // Default prices (can be updated from localStorage)
+            const defaultPrices = {
+                // Telescópica
+                "telescopica_riel_jamba_superior": 150,
+                "telescopica_jambas_laterales": 120,
+                "telescopica_adaptador_paloma": 100,
+                "telescopica_zoclos": 80,
+                "telescopica_cabezal": 80,
+                "telescopica_cerco_chapa_fijo": 90,
+                "telescopica_cerco_chapa_corredizo": 90,
+                "telescopica_traslape_fijo": 85,
+                "telescopica_traslapes_corredizos": 85,
+                "telescopica_vidrio_fijo": 500,
+                "telescopica_vidrios_corredizos": 450,
+                "telescopica_felpa": 2,  // per meter
+                "telescopica_vinil": 1.5, // per meter
+                
+                // OXXO
+                "oxxo_riel_jamba_mosq": 160,
+                "oxxo_adapt_mosq": 110,
+                "oxxo_jambas": 130,
+                "oxxo_zoclos": 85,
+                "oxxo_cabezales": 85,
+                "oxxo_cerco_chapa_fijo": 95,
+                "oxxo_cerco_chapa_corredizo": 95,
+                "oxxo_traslape_fijo": 90,
+                "oxxo_traslape_corredizo": 90,
+                "oxxo_verticales_mosq": 70,
+                "oxxo_horizontales_mosq": 70,
+                "oxxo_adapt_oxxo": 120,
+                "oxxo_felpa": 2.2,  // per meter
+                "oxxo_vinil": 1.7,  // per meter
+                "oxxo_vidrios_fijos": 520,
+                "oxxo_vidrios_corredizos": 470,
+                
+                // Corrediza
+                "corrediza_riel_jamba_mosq": 140,
+                "corrediza_adapt_mosq": 90,
+                "corrediza_zoclos": 75,
+                "corrediza_cabezales": 75,
+                "corrediza_jambas": 125,
+                "corrediza_cerco_chapa_fijo": 85,
+                "corrediza_cerco_chapa_corredizo": 85,
+                "corrediza_traslape_fijo": 80,
+                "corrediza_traslape_corredizo": 80,
+                "corrediza_vertical_mosq": 60,
+                "corrediza_horizontal_mosq": 60,
+                "corrediza_felpa": 1.8,  // per meter
+                "corrediza_vinil": 1.3,  // per meter
+                "corrediza_vidrio_fijo": 480,
+                "corrediza_vidrio_corredizo": 430
+            };
+            
+            // Load prices from localStorage or use defaults
+            let materialPrices = JSON.parse(localStorage.getItem('materialPrices')) || defaultPrices;
+            
+            // DOM Elements
+            const menuToggle = document.getElementById('menu-toggle');
+            const closeSidebar = document.getElementById('close-sidebar');
+            const sidebar = document.querySelector('.sidebar');
+            const backdrop = document.querySelector('.backdrop');
+            const windowTypeBtns = document.querySelectorAll('.window-type-btn');
+            const windowTypeLinks = document.querySelectorAll('.window-type');
+            const widthInput = document.getElementById('width');
+            const heightInput = document.getElementById('height');
+            const calculateBtn = document.getElementById('calculate-btn');
+            const resultsSection = document.getElementById('results-section');
+            const materialsList = document.getElementById('materials-list');
+            const totalCostElement = document.getElementById('total-cost');
+            const helpBtn = document.getElementById('help-btn');
+            const helpModal = document.getElementById('help-modal');
+            const closeHelpModal = document.getElementById('close-help-modal');
+            const closeHelpModal2 = document.getElementById('close-help-modal-2');
+            const editPricesBtn = document.getElementById('edit-prices-btn');
+            const editPricesModal = document.getElementById('edit-prices-modal');
+            const closePricesModal = document.getElementById('close-prices-modal');
+            const cancelPricesBtn = document.getElementById('cancel-prices-btn');
+            const savePricesBtn = document.getElementById('save-prices-btn');
+            const priceInputs = document.getElementById('price-inputs');
+            const saveBtn = document.getElementById('save-btn');
+            const pdfBtn = document.getElementById('pdf-btn');
+            const printBtn = document.getElementById('print-btn');
+            const shareBtn = document.getElementById('share-btn');
+            const selectedTypeDisplay = document.getElementById('selected-type-display');
+            const selectedType = document.getElementById('selected-type');
+            const resultType = document.getElementById('result-type');
+            const resultWidth = document.getElementById('result-width');
+            const resultHeight = document.getElementById('result-height');
+            const resultDate = document.getElementById('result-date');
+            const windowDrawing = document.getElementById('window-drawing');
+            
+            // Event Listeners
+            menuToggle.addEventListener('click', toggleSidebar);
+            closeSidebar.addEventListener('click', toggleSidebar);
+            backdrop.addEventListener('click', toggleSidebar);
+            
+            helpBtn.addEventListener('click', openHelpModal);
+            closeHelpModal.addEventListener('click', closeHelpModalFn);
+            closeHelpModal2.addEventListener('click', closeHelpModalFn);
+            
+            editPricesBtn.addEventListener('click', openEditPricesModal);
+            closePricesModal.addEventListener('click', closeEditPricesModal);
+            cancelPricesBtn.addEventListener('click', closeEditPricesModal);
+            savePricesBtn.addEventListener('click', savePrices);
+            
+            saveBtn.addEventListener('click', saveCalculation);
+            pdfBtn.addEventListener('click', generatePDF);
+            printBtn.addEventListener('click', printResults);
+            shareBtn.addEventListener('click', shareResults);
+            
+            widthInput.addEventListener('input', validateInputs);
+            heightInput.addEventListener('input', validateInputs);
+            
+            // Set window type buttons
+            windowTypeBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    setWindowType(this.getAttribute('data-type'), this.textContent.trim());
+                });
+            });
+            
+            windowTypeLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    setWindowType(this.getAttribute('data-type'), this.textContent.trim());
+                    toggleSidebar();
+                });
+            });
+            
+            calculateBtn.addEventListener('click', calculateMaterials);
+            
+            // Functions
+            function toggleSidebar() {
+                sidebar.classList.toggle('active');
+                backdrop.classList.toggle('active');
+            }
+            
+            function openHelpModal() {
+                helpModal.classList.remove('hidden');
+            }
+            
+            function closeHelpModalFn() {
+                helpModal.classList.add('hidden');
+            }
+            
+            function openEditPricesModal() {
+                // Populate price inputs
+                priceInputs.innerHTML = '';
+                
+                let groupedPrices = {
+                    "Telescópica": [],
+                    "OXXO": [],
+                    "Corrediza": []
+                };
+                
+                // Group prices by window type
+                for (const [key, value] of Object.entries(materialPrices)) {
+                    const parts = key.split('_');
+                    const type = parts[0];
+                    const name = parts.slice(1).join('_');
+                    
+                    if (type === 'telescopica') {
+                        groupedPrices["Telescópica"].push({key, name, value});
+                    } else if (type === 'oxxo') {
+                        groupedPrices["OXXO"].push({key, name, value});
+                    } else if (type === 'corrediza') {
+                        groupedPrices["Corrediza"].push({key, name, value});
+                    }
+                }
+                
+                // Create inputs for each group
+                for (const [type, prices] of Object.entries(groupedPrices)) {
+                    const groupDiv = document.createElement('div');
+                    groupDiv.className = 'mb-6 pb-4 border-b border-gray-200';
+                    
+                    const groupTitle = document.createElement('h4');
+                    groupTitle.className = 'font-semibold text-gray-800 mb-3';
+                    groupTitle.textContent = type;
+                    groupDiv.appendChild(groupTitle);
+                    
+                    const inputsDiv = document.createElement('div');
+                    inputsDiv.className = 'space-y-3';
+                    
+                    prices.forEach(item => {
+                        const inputDiv = document.createElement('div');
+                        inputDiv.className = 'grid grid-cols-5 gap-2 items-center';
+                        
+                        const label = document.createElement('label');
+                        label.className = 'col-span-3 text-sm text-gray-700';
+                        label.textContent = formatMaterialName(item.name);
+                        
+                        const input = document.createElement('input');
+                        input.type = 'number';
+                        input.className = 'col-span-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500';
+                        input.value = item.value;
+                        input.dataset.key = item.key;
+                        
+                        const currency = document.createElement('span');
+                        currency.className = 'col-span-1 text-sm text-gray-500';
+                        currency.textContent = '$/m, $/ud o $/m²';
+                        
+                        inputDiv.appendChild(label);
+                        inputDiv.appendChild(input);
+                        inputDiv.appendChild(currency);
+                        inputsDiv.appendChild(inputDiv);
+                    });
+                    
+                    groupDiv.appendChild(inputsDiv);
+                    priceInputs.appendChild(groupDiv);
+                }
+                
+                editPricesModal.classList.remove('hidden');
+            }
+            
+            function closeEditPricesModal() {
+                editPricesModal.classList.add('hidden');
+            }
+            
+            function savePrices() {
+                const inputs = document.querySelectorAll('#price-inputs input');
+                
+                inputs.forEach(input => {
+                    const key = input.dataset.key;
+                    const value = parseFloat(input.value);
+                    
+                    if (!isNaN(value)) {
+                        materialPrices[key] = value;
+                    }
+                });
+                
+                // Save to localStorage
+                localStorage.setItem('materialPrices', JSON.stringify(materialPrices));
+                
+                showAlert('success', 'Precios actualizados correctamente');
+                closeEditPricesModal();
+            }
+            
+            function setWindowType(type, displayName) {
+                windowType = type;
+                
+                // Update selected button style
+                windowTypeBtns.forEach(btn => {
+                    if (btn.getAttribute('data-type') === type) {
+                        btn.classList.remove('btn-type-default');
+                        btn.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+                    } else {
+                        btn.classList.add('btn-type-default');
+                        btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+                    }
+                });
+                
+                // Update selected type display
+                selectedTypeDisplay.classList.remove('hidden');
+                selectedType.textContent = displayName;
+                
+                validateInputs();
+            }
+            
+            function validateInputs() {
+                const width = widthInput.value;
+                const height = heightInput.value;
+                
+                if (windowType && width && height && !isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
+                    calculateBtn.disabled = false;
+                } else {
+                    calculateBtn.disabled = true;
+                }
+            }
+            
+            function formatMaterialName(name) {
+                return name.split('_').map(word => 
+                    word.charAt(0).toUpperCase() + word.slice(1).replace(/_/g, ' ')
+                ).join(' ');
+            }
+            
+            function calculateMaterials() {
+                windowWidth = parseFloat(widthInput.value);
+                windowHeight = parseFloat(heightInput.value);
+                
+                if (!windowType || !windowWidth || !windowHeight || windowWidth <= 0 || windowHeight <= 0) {
+                    showAlert('error', 'Por favor, completa todos los campos correctamente');
+                    return;
+                }
+                
+                // Clear previous results
+                materialsList.innerHTML = '';
+                
+                let totalCost = 0;
+                let materials = [];
+                
+                // Calculate based on window type
+                if (windowType === 'telescopica') {
+                    materials = calculateTelescopica();
+                } else if (windowType === 'oxxo') {
+                    materials = calculateOXXO();
+                } else if (windowType === 'corrediza') {
+                    materials = calculateCorrediza();
+                }
+                
+                // Display results
+                materials.forEach(material => {
+                    totalCost += material.total;
+                    
+                    const materialDiv = document.createElement('div');
+                    materialDiv.className = 'result-item bg-white p-4 rounded-lg border border-gray-200 hover:shadow-md';
+                    
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'flex justify-between items-start mb-1';
+                    
+                    const name = document.createElement('h4');
+                    name.className = 'font-medium text-gray-800';
+                    name.textContent = material.name;
+                    
+                    const total = document.createElement('span');
+                    total.className = 'font-semibold text-blue-600';
+                    total.textContent = `$${material.total.toFixed(2)}`;
+                    
+                    nameDiv.appendChild(name);
+                    nameDiv.appendChild(total);
+                    
+                    const detailsDiv = document.createElement('div');
+                    detailsDiv.className = 'flex justify-between text-sm text-gray-600';
+                    
+                    const quantity = document.createElement('span');
+                    quantity.textContent = `Cantidad: ${material.quantity} ${material.quantity > 1 ? 'unidades' : 'unidad'}`;
+                    
+                    const dimensions = document.createElement('span');
+                    dimensions.textContent = `Medidas: ${material.dimensions}`;
+                    
+                    const unitPrice = document.createElement('span');
+                    unitPrice.className = 'text-gray-700 font-medium';
+                    unitPrice.textContent = `Precio unitario: $${material.unitPrice.toFixed(2)}`;
+                    
+                    detailsDiv.appendChild(quantity);
+                    detailsDiv.appendChild(dimensions);
+                    detailsDiv.appendChild(unitPrice);
+                    
+                    materialDiv.appendChild(nameDiv);
+                    materialDiv.appendChild(detailsDiv);
+                    
+                    materialsList.appendChild(materialDiv);
+                });
+                
+                // Update project info
+                resultType.textContent = selectedType.textContent;
+                resultWidth.textContent = windowWidth;
+                resultHeight.textContent = windowHeight;
+                resultDate.textContent = new Date().toLocaleDateString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                // Update total cost
+                totalCostElement.textContent = `$${totalCost.toFixed(2)}`;
+                
+                // Draw window
+                drawWindow();
+                
+                // Show results section
+                resultsSection.classList.remove('hidden');
+                
+                // Scroll to results
+                resultsSection.scrollIntoView({ behavior: 'smooth' });
+            }
+            
+            function calculateTelescopica() {
+                const W = windowWidth;
+                const H = windowHeight;
+                
+                return [
+                    {
+                        name: 'Riel & Jamba superior',
+                        quantity: 1,
+                        dimensions: `${W} mm`,
+                        unitPrice: materialPrices['telescopica_riel_jamba_superior'],
+                        total: materialPrices['telescopica_riel_jamba_superior']
+                    },
+                    {
+                        name: 'Jambas laterales',
+                        quantity: 2,
+                        dimensions: `${H - 26} mm`,
+                        unitPrice: materialPrices['telescopica_jambas_laterales'],
+                        total: materialPrices['telescopica_jambas_laterales'] * 2
+                    },
+                    {
+                        name: 'Adaptador paloma',
+                        quantity: 1,
+                        dimensions: `${W - 65} mm`,
+                        unitPrice: materialPrices['telescopica_adaptador_paloma'],
+                        total: materialPrices['telescopica_adaptador_paloma']
+                    },
+                    {
+                        name: 'Zoclos',
+                        quantity: 3,
+                        dimensions: `${Math.round((W - 167) / 3)} mm`,
+                        unitPrice: materialPrices['telescopica_zoclos'],
+                        total: materialPrices['telescopica_zoclos'] * 3
+                    },
+                    {
+                        name: 'Cabezal',
+                        quantity: 3,
+                        dimensions: `${Math.round((W - 167) / 3)} mm`,
+                        unitPrice: materialPrices['telescopica_cabezal'],
+                        total: materialPrices['telescopica_cabezal'] * 3
+                    },
+                    {
+                        name: 'Cerco chapa fijo',
+                        quantity: 1,
+                        dimensions: `${H} mm`,
+                        unitPrice: materialPrices['telescopica_cerco_chapa_fijo'],
+                        total: materialPrices['telescopica_cerco_chapa_fijo']
+                    },
+                    {
+                        name: 'Cerco chapa corredizo',
+                        quantity: 1,
+                        dimensions: `${H - 40} mm`,
+                        unitPrice: materialPrices['telescopica_cerco_chapa_corredizo'],
+                        total: materialPrices['telescopica_cerco_chapa_corredizo']
+                    },
+                    {
+                        name: 'Traslape fijo',
+                        quantity: 1,
+                        dimensions: `${H} mm`,
+                        unitPrice: materialPrices['telescopica_traslape_fijo'],
+                        total: materialPrices['telescopica_traslape_fijo']
+                    },
+                    {
+                        name: 'Traslapes corredizos',
+                        quantity: 3,
+                        dimensions: `${H - 40} mm`,
+                        unitPrice: materialPrices['telescopica_traslapes_corredizos'],
+                        total: materialPrices['telescopica_traslapes_corredizos'] * 3
+                    },
+                    {
+                        name: 'Vidrio fijo',
+                        quantity: 1,
+                        dimensions: `${Math.round((W - 117) / 3)} mm × ${H - 95} mm`,
+                        unitPrice: materialPrices['telescopica_vidrio_fijo'],
+                        total: materialPrices['telescopica_vidrio_fijo']
+                    },
+                    {
+                        name: 'Vidrios corredizos',
+                        quantity: 2,
+                        dimensions: `${Math.round((W - 117) / 3)} mm × ${H - 135} mm`,
+                        unitPrice: materialPrices['telescopica_vidrios_corredizos'],
+                        total: materialPrices['telescopica_vidrios_corredizos'] * 2
+                    },
+                    {
+                        name: 'Felpa',
+                        quantity: Math.round((W * 5 + H * 8) / 1000),
+                        dimensions: `${Math.round((W * 5 + H * 8) / 1000)} m`,
+                        unitPrice: materialPrices['telescopica_felpa'],
+                        total: Math.round((W * 5 + H * 8) / 1000) * materialPrices['telescopica_felpa']
+                    },
+                    {
+                        name: 'Vinil',
+                        quantity: Math.round((W * 2 + H * 9) / 1000),
+                        dimensions: `${Math.round((W * 2 + H * 9) / 1000)} m`,
+                        unitPrice: materialPrices['telescopica_vinil'],
+                        total: Math.round((W * 2 + H * 9) / 1000) * materialPrices['telescopica_vinil']
+                    }
+                ];
+            }
+            
+            function calculateOXXO() {
+                const W = windowWidth;
+                const H = windowHeight;
+                
+                return [
+                    {
+                        name: 'Riel & Jamba mosquitero',
+                        quantity: 1,
+                        dimensions: `${W} mm`,
+                        unitPrice: materialPrices['oxxo_riel_jamba_mosq'],
+                        total: materialPrices['oxxo_riel_jamba_mosq']
+                    },
+                    {
+                        name: 'Adaptador mosquitero',
+                        quantity: 1,
+                        dimensions: `${W} mm`,
+                        unitPrice: materialPrices['oxxo_adapt_mosq'],
+                        total: materialPrices['oxxo_adapt_mosq']
+                    },
+                    {
+                        name: 'Jambas',
+                        quantity: 2,
+                        dimensions: `${H - 26} mm`,
+                        unitPrice: materialPrices['oxxo_jambas'],
+                        total: materialPrices['oxxo_jambas'] * 2
+                    },
+                    {
+                        name: 'Zoclos',
+                        quantity: 4,
+                        dimensions: `${Math.round((W - 330) / 4)} mm`,
+                        unitPrice: materialPrices['oxxo_zoclos'],
+                        total: materialPrices['oxxo_zoclos'] * 4
+                    },
+                    {
+                        name: 'Cabezales',
+                        quantity: 4,
+                        dimensions: `${Math.round((W - 330) / 4)} mm`,
+                        unitPrice: materialPrices['oxxo_cabezales'],
+                        total: materialPrices['oxxo_cabezales'] * 4
+                    },
+                    {
+                        name: 'Cerco chapa fijo',
+                        quantity: 2,
+                        dimensions: `${H - 30} mm`,
+                        unitPrice: materialPrices['oxxo_cerco_chapa_fijo'],
+                        total: materialPrices['oxxo_cerco_chapa_fijo'] * 2
+                    },
+                    {
+                        name: 'Cerco chapa corredizo',
+                        quantity: 2,
+                        dimensions: `${H - 40} mm`,
+                        unitPrice: materialPrices['oxxo_cerco_chapa_corredizo'],
+                        total: materialPrices['oxxo_cerco_chapa_corredizo'] * 2
+                    },
+                    {
+                        name: 'Traslape fijo',
+                        quantity: 2,
+                        dimensions: `${H - 30} mm`,
+                        unitPrice: materialPrices['oxxo_traslape_fijo'],
+                        total: materialPrices['oxxo_traslape_fijo'] * 2
+                    },
+                    {
+                        name: 'Traslape corredizo',
+                        quantity: 2,
+                        dimensions: `${H - 40} mm`,
+                        unitPrice: materialPrices['oxxo_traslape_corredizo'],
+                        total: materialPrices['oxxo_traslape_corredizo'] * 2
+                    },
+                    {
+                        name: 'Verticales mosquitero',
+                        quantity: 4,
+                        dimensions: `${H - 20} mm`,
+                        unitPrice: materialPrices['oxxo_verticales_mosq'],
+                        total: materialPrices['oxxo_verticales_mosq'] * 4
+                    },
+                    {
+                        name: 'Horizontales mosquitero',
+                        quantity: 4,
+                        dimensions: `${Math.round((W - 10) / 4)} mm`,
+                        unitPrice: materialPrices['oxxo_horizontales_mosq'],
+                        total: materialPrices['oxxo_horizontales_mosq'] * 4
+                    },
+                    {
+                        name: 'Adaptador OXXO',
+                        quantity: 2,
+                        dimensions: `${H - 50} mm`,
+                        unitPrice: materialPrices['oxxo_adapt_oxxo'],
+                        total: materialPrices['oxxo_adapt_oxxo'] * 2
+                    },
+                    {
+                        name: 'Felpa',
+                        quantity: Math.round((W * 5 + H * 10) / 1000),
+                        dimensions: `${Math.round((W * 5 + H * 10) / 1000)} m`,
+                        unitPrice: materialPrices['oxxo_felpa'],
+                        total: Math.round((W * 5 + H * 10) / 1000) * materialPrices['oxxo_felpa']
+                    },
+                    {
+                        name: 'Vinil',
+                        quantity: Math.round((W * 2 + H * 8) / 1000),
+                        dimensions: `${Math.round((W * 2 + H * 8) / 1000)} m`,
+                        unitPrice: materialPrices['oxxo_vinil'],
+                        total: Math.round((W * 2 + H * 8) / 1000) * materialPrices['oxxo_vinil']
+                    },
+                    {
+                        name: 'Vidrios fijos',
+                        quantity: 2,
+                        dimensions: `${Math.round((W - 265) / 4)} mm × ${H - 125} mm`,
+                        unitPrice: materialPrices['oxxo_vidrios_fijos'],
+                        total: materialPrices['oxxo_vidrios_fijos'] * 2
+                    },
+                    {
+                        name: 'Vidrios corredizos',
+                        quantity: 2,
+                        dimensions: `${Math.round((W - 265) / 4)} mm × ${H - 135} mm`,
+                        unitPrice: materialPrices['oxxo_vidrios_corredizos'],
+                        total: materialPrices['oxxo_vidrios_corredizos'] * 2
+                    }
+                ];
+            }
+            
+            function calculateCorrediza() {
+                const W = windowWidth;
+                const H = windowHeight;
+                
+                return [
+                    {
+                        name: 'Riel & Jamba mosquitero',
+                        quantity: 1,
+                        dimensions: `${W} mm`,
+                        unitPrice: materialPrices['corrediza_riel_jamba_mosq'],
+                        total: materialPrices['corrediza_riel_jamba_mosq']
+                    },
+                    {
+                        name: 'Adaptador mosquitero',
+                        quantity: 1,
+                        dimensions: `${W} mm`,
+                        unitPrice: materialPrices['corrediza_adapt_mosq'],
+                        total: materialPrices['corrediza_adapt_mosq']
+                    },
+                    {
+                        name: 'Zoclos',
+                        quantity: 2,
+                        dimensions: `${Math.round((W - 185) / 2)} mm`,
+                        unitPrice: materialPrices['corrediza_zoclos'],
+                        total: materialPrices['corrediza_zoclos'] * 2
+                    },
+                    {
+                        name: 'Cabezales',
+                        quantity: 2,
+                        dimensions: `${Math.round((W - 185) / 2)} mm`,
+                        unitPrice: materialPrices['corrediza_cabezales'],
+                        total: materialPrices['corrediza_cabezales'] * 2
+                    },
+                    {
+                        name: 'Jambas',
+                        quantity: 2,
+                        dimensions: `${H - 26} mm`,
+                        unitPrice: materialPrices['corrediza_jambas'],
+                        total: materialPrices['corrediza_jambas'] * 2
+                    },
+                    {
+                        name: 'Cerco chapa fijo',
+                        quantity: 1,
+                        dimensions: `${H - 30} mm`,
+                        unitPrice: materialPrices['corrediza_cerco_chapa_fijo'],
+                        total: materialPrices['corrediza_cerco_chapa_fijo']
+                    },
+                    {
+                        name: 'Cerco chapa corredizo',
+                        quantity: 1,
+                        dimensions: `${H - 40} mm`,
+                        unitPrice: materialPrices['corrediza_cerco_chapa_corredizo'],
+                        total: materialPrices['corrediza_cerco_chapa_corredizo']
+                    },
+                    {
+                        name: 'Traslape fijo',
+                        quantity: 1,
+                        dimensions: `${H - 30} mm`,
+                        unitPrice: materialPrices['corrediza_traslape_fijo'],
+                        total: materialPrices['corrediza_traslape_fijo']
+                    },
+                    {
+                        name: 'Traslape corredizo',
+                        quantity: 1,
+                        dimensions: `${H - 40} mm`,
+                        unitPrice: materialPrices['corrediza_traslape_corredizo'],
+                        total: materialPrices['corrediza_traslape_corredizo']
+                    },
+                    {
+                        name: 'Vertical mosquitero',
+                        quantity: 2,
+                        dimensions: `${H - 20} mm`,
+                        unitPrice: materialPrices['corrediza_vertical_mosq'],
+                        total: materialPrices['corrediza_vertical_mosq'] * 2
+                    },
+                    {
+                        name: 'Horizontal mosquitero',
+                        quantity: 2,
+                        dimensions: `${Math.round((W - 25) / 2)} mm`,
+                        unitPrice: materialPrices['corrediza_horizontal_mosq'],
+                        total: materialPrices['corrediza_horizontal_mosq'] * 2
+                    },
+                    {
+                        name: 'Felpa',
+                        quantity: Math.round((W * 4 + H * 8) / 1000),
+                        dimensions: `${Math.round((W * 4 + H * 8) / 1000)} m`,
+                        unitPrice: materialPrices['corrediza_felpa'],
+                        total: Math.round((W * 4 + H * 8) / 1000) * materialPrices['corrediza_felpa']
+                    },
+                    {
+                        name: 'Vinil',
+                        quantity: Math.round((W * 2 + H * 4) / 1000),
+                        dimensions: `${Math.round((W * 2 + H * 4) / 1000)} m`,
+                        unitPrice: materialPrices['corrediza_vinil'],
+                        total: Math.round((W * 2 + H * 4) / 1000) * materialPrices['corrediza_vinil']
+                    },
+                    {
+                        name: 'Vidrio fijo',
+                        quantity: 1,
+                        dimensions: `${Math.round((W - 151) / 2)} mm × ${H - 125} mm`,
+                        unitPrice: materialPrices['corrediza_vidrio_fijo'],
+                        total: materialPrices['corrediza_vidrio_fijo']
+                    },
+                    {
+                        name: 'Vidrio corredizo',
+                        quantity: 1,
+                        dimensions: `${Math.round((W - 151) / 2)} mm × ${H - 135} mm`,
+                        unitPrice: materialPrices['corrediza_vidrio_corredizo'],
+                        total: materialPrices['corrediza_vidrio_corredizo']
+                    }
+                ];
+            }
+            
+            function drawWindow() {
+                windowDrawing.innerHTML = '';
+                
+                if (!windowType) return;
+                
+                const containerWidth = windowDrawing.offsetWidth;
+                const containerHeight = windowDrawing.offsetHeight;
+                
+                const scaleFactor = Math.min(
+                    containerWidth / windowWidth,
+                    containerHeight / windowHeight
+                );
+                
+                const scaledWidth = windowWidth * scaleFactor * 0.9;
+                const scaledHeight = windowHeight * scaleFactor * 0.9;
+                
+                const canvas = document.createElement('div');
+                canvas.style.width = `${scaledWidth}px`;
+                canvas.style.height = `${scaledHeight}px`;
+                canvas.style.border = '2px solid #1e40af';
+                canvas.style.position = 'relative';
+                canvas.style.backgroundColor = '#f8fafc';
+                
+                if (windowType === 'telescopica') {
+                    // Draw telescopic window
+                    const partWidth = scaledWidth / 3;
+                    const glassHeight = scaledHeight * 0.8;
+                    
+                    // Fixed part
+                    const fixedPart = document.createElement('div');
+                    fixedPart.style.position = 'absolute';
+                    fixedPart.style.left = '0';
+                    fixedPart.style.top = '0';
+                    fixedPart.style.width = `${partWidth}px`;
+                    fixedPart.style.height = `${scaledHeight}px`;
+                    fixedPart.style.borderRight = '1px solid #334155';
+                    fixedPart.style.backgroundColor = '#e2e8f0';
+                    canvas.appendChild(fixedPart);
+                    
+                    // Fixed glass
+                    const fixedGlass = document.createElement('div');
+                    fixedGlass.style.position = 'absolute';
+                    fixedGlass.style.left = '10px';
+                    fixedGlass.style.top = '10px';
+                    fixedGlass.style.width = `${partWidth - 20}px`;
+                    fixedGlass.style.height = `${glassHeight}px`;
+                    fixedGlass.style.backgroundColor = '#60a5fa';
+                    fixedGlass.style.opacity = '0.6';
+                    fixedPart.appendChild(fixedGlass);
+                    
+                    // Sliding parts
+                    const slidingPart1 = document.createElement('div');
+                    slidingPart1.style.position = 'absolute';
+                    slidingPart1.style.left = `${partWidth - 10}px`;
+                    slidingPart1.style.top = '0';
+                    slidingPart1.style.width = `${partWidth}px`;
+                    slidingPart1.style.height = `${scaledHeight - 10}px`;
+                    slidingPart1.style.borderRight = '1px solid #334155';
+                    slidingPart1.style.backgroundColor = '#e2e8f0';
+                    canvas.appendChild(slidingPart1);
+                    
+                    const slidingGlass1 = document.createElement('div');
+                    slidingGlass1.style.position = 'absolute';
+                    slidingGlass1.style.left = '10px';
+                    slidingGlass1.style.top = '10px';
+                    slidingGlass1.style.width = `${partWidth - 20}px`;
+                    slidingGlass1.style.height = `${glassHeight - 10}px`;
+                    slidingGlass1.style.backgroundColor = '#60a5fa';
+                    slidingGlass1.style.opacity = '0.6';
+                    slidingPart1.appendChild(slidingGlass1);
+                    
+                    const slidingPart2 = document.createElement('div');
+                    slidingPart2.style.position = 'absolute';
+                    slidingPart2.style.left = `${2 * partWidth - 20}px`;
+                    slidingPart2.style.top = '0';
+                    slidingPart2.style.width = `${partWidth}px`;
+                    slidingPart2.style.height = `${scaledHeight - 20}px`;
+                    slidingPart2.style.backgroundColor = '#e2e8f0';
+                    canvas.appendChild(slidingPart2);
+                    
+                    const slidingGlass2 = document.createElement('div');
+                    slidingGlass2.style.position = 'absolute';
+                    slidingGlass2.style.left = '10px';
+                    slidingGlass2.style.top = '10px';
+                    slidingGlass2.style.width = `${partWidth - 20}px`;
+                    slidingGlass2.style.height = `${glassHeight - 20}px`;
+                    slidingGlass2.style.backgroundColor = '#60a5fa';
+                    slidingGlass2.style.opacity = '0.6';
+                    slidingPart2.appendChild(slidingGlass2);
+                    
+                    // Add lines to represent the sliding mechanism
+                    for (let i = 1; i <= 2; i++) {
+                        const line = document.createElement('div');
+                        line.style.position = 'absolute';
+                        line.style.left = `${i * partWidth - 5}px`;
+                        line.style.top = '0';
+                        line.style.width = '2px';
+                        line.style.height = `${scaledHeight - (i * 10)}px`;
+                        line.style.backgroundColor = '#4b5563';
+                        canvas.appendChild(line);
+                    }
+                    
+                } else if (windowType === 'oxxo') {
+                    // Draw OXXO window
+                    const partWidth = scaledWidth / 4;
+                    const glassHeight = scaledHeight * 0.7;
+                    
+                    // Fixed parts (left and right)
+                    const fixedPartLeft = document.createElement('div');
+                    fixedPartLeft.style.position = 'absolute';
+                    fixedPartLeft.style.left = '0';
+                    fixedPartLeft.style.top = '0';
+                    fixedPartLeft.style.width = `${partWidth}px`;
+                    fixedPartLeft.style.height = `${scaledHeight}px`;
+                    fixedPartLeft.style.borderRight = '1px solid #334155';
+                    fixedPartLeft.style.backgroundColor = '#e2e8f0';
+                    canvas.appendChild(fixedPartLeft);
+                    
+                    const fixedGlassLeft = document.createElement('div');
+                    fixedGlassLeft.style.position = 'absolute';
+                    fixedGlassLeft.style.left = '10px';
+                    fixedGlassLeft.style.top = '10px';
+                    fixedGlassLeft.style.width = `${partWidth - 20}px`;
+                    fixedGlassLeft.style.height = `${glassHeight}px`;
+                    fixedGlassLeft.style.backgroundColor = '#60a5fa';
+                    fixedGlassLeft.style.opacity = '0.6';
+                    fixedPartLeft.appendChild(fixedGlassLeft);
+                    
+                    const fixedPartRight = document.createElement('div');
+                    fixedPartRight.style.position = 'absolute';
+                    fixedPartRight.style.right = '0';
+                    fixedPartRight.style.top = '0';
+                    fixedPartRight.style.width = `${partWidth}px`;
+                    fixedPartRight.style.height = `${scaledHeight}px`;
+                    fixedPartRight.style.borderLeft = '1px solid #334155';
+                    fixedPartRight.style.backgroundColor = '#e2e8f0';
+                    canvas.appendChild(fixedPartRight);
+                    
+                    const fixedGlassRight = document.createElement('div');
+                    fixedGlassRight.style.position = 'absolute';
+                    fixedGlassRight.style.right = '10px';
+                    fixedGlassRight.style.top = '10px';
+                    fixedGlassRight.style.width = `${partWidth - 20}px`;
+                    fixedGlassRight.style.height = `${glassHeight}px`;
+                    fixedGlassRight.style.backgroundColor = '#60a5fa';
+                    fixedGlassRight.style.opacity = '0.6';
+                    fixedPartRight.appendChild(fixedGlassRight);
+                    
+                    // Sliding parts (middle)
+                    const slidingPart1 = document.createElement('div');
+                    slidingPart1.style.position = 'absolute';
+                    slidingPart1.style.left = `${partWidth - 10}px`;
+                    slidingPart1.style.top = '0';
+                    slidingPart1.style.width = `${partWidth}px`;
+                    slidingPart1.style.height = `${scaledHeight - 10}px`;
+                    slidingPart1.style.borderRight = '1px solid #334155';
+                    slidingPart1.style.backgroundColor = '#e2e8f0';
+                    canvas.appendChild(slidingPart1);
+                    
+                    const slidingGlass1 = document.createElement('div');
+                    slidingGlass1.style.position = 'absolute';
+                    slidingGlass1.style.left = '10px';
+                    slidingGlass1.style.top = '10px';
+                    slidingGlass1.style.width = `${partWidth - 20}px`;
+                    slidingGlass1.style.height = `${glassHeight - 10}px`;
+                    slidingGlass1.style.backgroundColor = '#60a5fa';
+                    slidingGlass1.style.opacity = '0.6';
+                    slidingPart1.appendChild(slidingGlass1);
+                    
+                    const slidingPart2 = document.createElement('div');
+                    slidingPart2.style.position = 'absolute';
+                    slidingPart2.style.left = `${2 * partWidth - 20}px`;
+                    slidingPart2.style.top = '0';
+                    slidingPart2.style.width = `${partWidth}px`;
+                    slidingPart2.style.height = `${scaledHeight - 20}px`;
+                    slidingPart2.style.backgroundColor = '#e2e8f0';
+                    canvas.appendChild(slidingPart2);
+                    
+                    const slidingGlass2 = document.createElement('div');
+                    slidingGlass2.style.position = 'absolute';
+                    slidingGlass2.style.left = '10px';
+                    slidingGlass2.style.top = '10px';
+                    slidingGlass2.style.width = `${partWidth - 20}px`;
+                    slidingGlass2.style.height = `${glassHeight - 20}px`;
+                    slidingGlass2.style.backgroundColor = '#60a5fa';
+                    slidingGlass2.style.opacity = '0.6';
+                    slidingPart2.appendChild(slidingGlass2);
+                    
+                    // Add lines to represent the sliding mechanism
+                    for (let i = 1; i <= 3; i++) {
+                        const line = document.createElement('div');
+                        line.style.position = 'absolute';
+                        line.style.left = `${i * partWidth - 5}px`;
+                        line.style.top = '0';
+                        line.style.width = '2px';
+                        line.style.height = `${scaledHeight - (i * 10)}px`;
+                        line.style.backgroundColor = '#4b5563';
+                        canvas.appendChild(line);
+                    }
+                    
+                } else if (windowType === 'corrediza') {
+                    // Draw sliding window
+                    const partWidth = scaledWidth / 2;
+                    const glassHeight = scaledHeight * 0.7;
+                    
+                    // Fixed part (left)
+                    const fixedPart = document.createElement('div');
+                    fixedPart.style.position = 'absolute';
+                    fixedPart.style.left = '0';
+                    fixedPart.style.top = '0';
+                    fixedPart.style.width = `${partWidth}px`;
+                    fixedPart.style.height = `${scaledHeight}px`;
+                    fixedPart.style.borderRight = '1px solid #334155';
+                    fixedPart.style.backgroundColor = '#e2e8f0';
+                    canvas.appendChild(fixedPart);
+                    
+                    const fixedGlass = document.createElement('div');
+                    fixedGlass.style.position = 'absolute';
+                    fixedGlass.style.left = '10px';
+                    fixedGlass.style.top = '10px';
+                    fixedGlass.style.width = `${partWidth - 20}px`;
+                    fixedGlass.style.height = `${glassHeight}px`;
+                    fixedGlass.style.backgroundColor = '#60a5fa';
+                    fixedGlass.style.opacity = '0.6';
+                    fixedPart.appendChild(fixedGlass);
+                    
+                    // Sliding part (right)
+                    const slidingPart = document.createElement('div');
+                    slidingPart.style.position = 'absolute';
+                    slidingPart.style.right = '0';
+                    slidingPart.style.top = '0';
+                    slidingPart.style.width = `${partWidth - 10}px`;
+                    slidingPart.style.height = `${scaledHeight - 10}px`;
+                    slidingPart.style.backgroundColor = '#e2e8f0';
+                    canvas.appendChild(slidingPart);
+                    
+                    const slidingGlass = document.createElement('div');
+                    slidingGlass.style.position = 'absolute';
+                    slidingGlass.style.left = '10px';
+                    slidingGlass.style.top = '10px';
+                    slidingGlass.style.width = `${partWidth - 20}px`;
+                    slidingGlass.style.height = `${glassHeight - 10}px`;
+                    slidingGlass.style.backgroundColor = '#60a5fa';
+                    slidingGlass.style.opacity = '0.6';
+                    slidingPart.appendChild(slidingGlass);
+                    
+                    // Add line to represent the sliding mechanism
+                    const line = document.createElement('div');
+                    line.style.position = 'absolute';
+                    line.style.left = `${partWidth - 5}px`;
+                    line.style.top = '0';
+                    line.style.width = '2px';
+                    line.style.height = `${scaledHeight - 10}px`;
+                    line.style.backgroundColor = '#4b5563';
+                    canvas.appendChild(line);
+                }
+                
+                // Add title
+                const title = document.createElement('div');
+                title.style.position = 'absolute';
+                title.style.bottom = '5px';
+                title.style.left = '0';
+                title.style.width = '100%';
+                title.style.textAlign = 'center';
+                title.style.fontSize = '12px';
+                title.style.color = '#374151';
+                title.textContent = `Ventana ${windowType.charAt(0).toUpperCase() + windowType.slice(1)} (${windowWidth}mm × ${windowHeight}mm)`;
+                canvas.appendChild(title);
+                
+                windowDrawing.appendChild(canvas);
+            }
+            
+            function saveCalculation() {
+                if (!windowType || !windowWidth || !windowHeight) {
+                    showAlert('error', 'No hay datos para guardar');
+                    return;
+                }
+                
+                // Get current calculations
+                const calculation = {
+                    type: windowType,
+                    width: windowWidth,
+                    height: windowHeight,
+                    date: new Date().toISOString(),
+                    materials: [],
+                    total: parseFloat(totalCostElement.textContent.substring(1))
+                };
+                
+                // Get materials from the list
+                const materialElements = document.querySelectorAll('#materials-list > div');
+                materialElements.forEach(el => {
+                    const name = el.querySelector('h4').textContent;
+                    const quantity = el.querySelector('div > span:first-child').textContent.split(': ')[1].split(' ')[0];
+                    const dimensions = el.querySelector('div > span:nth-child(2)').textContent.split(': ')[1];
+                    const unitPrice = parseFloat(el.querySelector('div > span:nth-child(3)').textContent.split('$')[1]);
+                    const total = parseFloat(el.querySelector('h4 ~ span').textContent.substring(1));
+                    
+                    calculation.materials.push({
+                        name,
+                        quantity: parseInt(quantity),
+                        dimensions,
+                        unitPrice,
+                        total
+                    });
+                });
+                
+                // Get saved calculations from localStorage or create empty array
+                const savedCalculations = JSON.parse(localStorage.getItem('savedCalculations')) || [];
+                
+                // Add new calculation
+                savedCalculations.push(calculation);
+                
+                // Save to localStorage
+                localStorage.setItem('savedCalculations', JSON.stringify(savedCalculations));
+                
+                showAlert('success', 'Cálculo guardado correctamente');
+            }
+            
+            function generatePDF() {
+                if (!windowType || !windowWidth || !windowHeight) {
+                    showAlert('error', 'No hay datos para exportar');
+                    return;
+                }
+                
+                // Create a new jsPDF instance
+                const doc = new jsPDF();
+                
+                // Add title
+                doc.setFontSize(18);
+                doc.setTextColor(30, 58, 138);
+                doc.text('MundoCancel - Cálculo de materiales', 105, 15, { align: 'center' });
+                
+                doc.setFontSize(14);
+                doc.setTextColor(30, 41, 59);
+                doc.text(`Ventana ${windowType.charAt(0).toUpperCase() + windowType.slice(1)}`, 105, 25, { align: 'center' });
+                
+                // Add project details
+                doc.setFontSize(12);
+                doc.setTextColor(71, 85, 105);
+                doc.text(`Medidas: ${windowWidth} mm (ancho) × ${windowHeight} mm (alto)`, 14, 35);
+                doc.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, 14, 42);
+                
+                // Add materials table
+                doc.setFontSize(12);
+                doc.setTextColor(255, 255, 255);
+                doc.setFillColor(30, 58, 138);
+                doc.rect(14, 50, 182, 8, 'F');
+                doc.text('Material', 20, 55);
+                doc.text('Cantidad', 70, 55);
+                doc.text('Medidas', 100, 55);
+                doc.text('Precio', 150, 55);
+                doc.text('Total', 180, 55);
+                
+                // Get materials data
+                const materials = Array.from(document.querySelectorAll('#materials-list > div')).map(el => {
+                    return {
+                        name: el.querySelector('h4').textContent,
+                        quantity: el.querySelector('div > span:first-child').textContent.split(': ')[1],
+                        dimensions: el.querySelector('div > span:nth-child(2)').textContent.split(': ')[1],
+                        unitPrice: el.querySelector('div > span:nth-child(3)').textContent.split('$')[1],
+                        total: el.querySelector('h4 ~ span').textContent
+                    };
+                });
+                
+                // Add materials rows
+                doc.setFontSize(10);
+                doc.setTextColor(0, 0, 0);
+                let y = 60;
+                
+                materials.forEach((material, index) => {
+                    if (index % 2 === 0) {
+                        doc.setFillColor(241, 245, 249);
+                        doc.rect(14, y, 182, 8, 'F');
+                    }
+                    
+                    doc.text(material.name.substring(0, 30), 20, y + 5);
+                    doc.text(material.quantity, 70, y + 5);
+                    doc.text(material.dimensions.substring(0, 20), 100, y + 5);
+                    doc.text(`$${material.unitPrice}`, 150, y + 5);
+                    doc.text(material.total, 180, y + 5);
+                    
+                    y += 8;
+                    
+                    // Add new page if needed
+                    if (y > 280 && index < materials.length - 1) {
+                        doc.addPage();
+                        doc.setFontSize(12);
+                        doc.setTextColor(255, 255, 255);
+                        doc.setFillColor(30, 58, 138);
+                        doc.rect(14, 20, 182, 8, 'F');
+                        doc.text('Material', 20, 25);
+                        doc.text('Cantidad', 70, 25);
+                        doc.text('Medidas', 100, 25);
+                        doc.text('Precio', 150, 25);
+                        doc.text('Total', 180, 25);
+                        doc.setFontSize(10);
+                        doc.setTextColor(0, 0, 0);
+                        y = 28;
+                    }
+                });
+                
+                // Add total
+                doc.setFontSize(12);
+                doc.setTextColor(30, 41, 59);
+                doc.text(`Costo total estimado: ${totalCostElement.textContent}`, 14, y + 15);
+                
+                // Save the PDF
+                doc.save(`MundoCancel_${windowType}_${windowWidth}x${windowHeight}.pdf`);
+                
+                showAlert('success', 'PDF generado correctamente');
+            }
+            
+            function printResults() {
+                if (!windowType || !windowWidth || !windowHeight) {
+                    showAlert('error', 'No hay datos para imprimir');
+                    return;
+                }
+                
+                // Open print dialog
+                window.print();
+            }
+            
+            function shareResults() {
+                if (!windowType || !windowWidth || !windowHeight) {
+                    showAlert('error', 'No hay datos para compartir');
+                    return;
+                }
+                
+                // Generate PDF first
+                generatePDF();
+                
+                // Then try to share (if supported)
+                if (navigator.share) {
+                    const pdfName = `MundoCancel_${windowType}_${windowWidth}x${windowHeight}.pdf`;
+                    
+                    // For demo purposes, we'll just show an alert
+                    // In a real app, you would use the actual PDF file
+                    showAlert('info', 'La función de compartir está habilitada. Se abrirá el diálogo de compartir cuando el PDF esté listo.');
+                    
+                    /* Actual implementation would look like:
+                    generatePDF().then(pdfBlob => {
+                        navigator.share({
+                            title: `Cálculo de ventana ${windowType}`,
+                            text: `Ventana ${windowType} de ${windowWidth}mm × ${windowHeight}mm`,
+                            files: [new File([pdfBlob], pdfName, { type: 'application/pdf' })]
+                        })
+                        .catch(error => {
+                            showAlert('error', 'Error al compartir: ' + error.message);
+                        });
+                    });
+                    */
+                } else {
+                    showAlert('info', 'La función de compartir no está disponible en este navegador. Puede descargar el PDF y compartirlo manualmente.');
+                }
+            }
+            
+            function showAlert(type, message) {
+                // Create alert element
+                const alert = document.createElement('div');
+                alert.className = `fixed top-4 right-4 px-6 py-4 rounded-md shadow-md z-50 flex items-center animate-fade-in 
+                    ${type === 'success' ? 'bg-green-100 border border-green-400 text-green-700' : 
+                    type === 'error' ? 'bg-red-100 border border-red-400 text-red-700' :
+                    'bg-blue-100 border border-blue-400 text-blue-700'}`;
+                    
+                // Icon
+                const icon = document.createElement('i');
+                icon.className = `mr-3 ${type === 'success' ? 'fas fa-check-circle' : 
+                    type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-info-circle'}`;
+                
+                // Message
+                const messageSpan = document.createElement('span');
+                messageSpan.textContent = message;
+                
+                // Close button
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'ml-4 text-xl';
+                closeBtn.innerHTML = '&times;';
+                closeBtn.addEventListener('click', () => {
+                    alert.classList.add('animate-fade-out');
+                    setTimeout(() => alert.remove(), 300);
+                });
+                
+                alert.appendChild(icon);
+                alert.appendChild(messageSpan);
+                alert.appendChild(closeBtn);
+                
+                document.body.appendChild(alert);
+                
+                // Auto-remove after 5 seconds
+                setTimeout(() => {
+                    alert.classList.add('animate-fade-out');
+                    setTimeout(() => alert.remove(), 300);
+                }, 5000);
+                
+                // CSS animations
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes fadeIn {
+                        from { opacity: 0; transform: translateY(-20px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    @keyframes fadeOut {
+                        from { opacity: 1; transform: translateY(0); }
+                        to { opacity: 0; transform: translateY(-20px); }
+                    }
+                    .animate-fade-in {
+                        animation: fadeIn 0.3s ease-out forwards;
+                    }
+                    .animate-fade-out {
+                        animation: fadeOut 0.3s ease-out forwards;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        });
+    </script>
+</body>
+</html>
